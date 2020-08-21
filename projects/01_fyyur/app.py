@@ -49,7 +49,8 @@ class Venue(db.Model):
     talent_description = db.Column(db.Text)
     genres=db.Column(db.ARRAY(db.String()))
     # TODO: implement any missing fields, as a database migration using Flask-Migrate
-    artists = db.relationship('Artist', secondary='show', backref='playing_venues')
+    shows = db.relationship('Show', backref='venue', lazy=True, cascade="all,delete")
+    # artists = db.relationship('Artist', secondary='show', backref='playing_venues')
     # def get_venue(self, city, state):
     #     return self.query.filter(self.city==city, self.state==state).all()
     
@@ -67,7 +68,8 @@ class Artist(db.Model):
     website = db.Column(db.String(120))
     seeking_venue = db.Column(db.Boolean, default = False)
     seeking_description = db.Column(db.Text)
-    venues = db.relationship('Venue', secondary='show', backref='venue_artists')
+    shows = db.relationship('Show', backref='artist', lazy=True, cascade="all,delete")
+    # venues = db.relationship('Venue', secondary='show', backref='venue_artists')
 
     # DONE: implement any missing fields, as a database migration using Flask-Migrate
 
@@ -388,18 +390,20 @@ def shows():
   # TODO: replace with real venues data.
   #       num_shows should be aggregated based on number of upcoming shows per venue.
   
-  result = []
-  shows = Show.query.join(Venue, Show.venue_id == Venue.id).join(Artist, Artist.id == Show.artist_id).all()
+  data = []
+  shows = Show.query.order_by(Show.start_time.desc()).all()
   for show in shows:
-    print(show.artist.name)
-    show_obj = {"venue_id": show.venue_id,
-    "venue_name": show.venue.name,
-    "artist_id": show.artist_id,
-    "artist_name": show.artist.name,
-    "artist_image_link": show.artist.image_link,
-    "start_time": str(show.start_time)
-    }
-    result.append(show_obj)
+      venue = Venue.query.filter_by(id=show.venue_id).first_or_404()
+      artist = Artist.query.filter_by(id=show.artist_id).first_or_404()
+      data.extend([{
+          "venue_id": venue.id,
+          "venue_name": venue.name,
+          "artist_id": artist.id,
+          "artist_name": artist.name,
+          "artist_image_link": artist.image_link,
+          "start_time": show.start_time.strftime("%m/%d/%Y, %H:%M")
+      }])
+  return render_template('pages/shows.html', shows=data)
     
   # data=[{
   #   "venue_id": 1,
